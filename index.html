@@ -262,7 +262,7 @@ DimeX
 <div class="relative">
 
 <button id="walletBtn"      
-onclick="connectWallet()"      
+onclick="handleWalletButton()"      
 class="bg-amber-500 text-black 
 px-3 sm:px-4 
 py-1.5 sm:py-2 
@@ -292,6 +292,12 @@ whitespace-nowrap transition">
     
     + Add DMX
     
+  </button>
+
+  <button onclick="addDMXCNativeCoin()"
+    class="bg-blue-500 text-white px-4 py-1.5 rounded-lg font-semibold text-xs sm:text-sm shadow-md hover:scale-105 transition">
+    + Add DMXC
+    <span class="block text-[9px]">NATIVE COIN</span>
   </button>
 </div>
 
@@ -994,12 +1000,9 @@ View
   
 </main>      
         
+<script src="/dash/appkit-globals.js"></script>
 <script>  
     
-import { createAppKit } from "@reown/appkit/react";
-import { wagmiAdapter } from "@/config/wagmi";
-import { getAccount, getBalance, getConnections, writeContract, waitForTransactionReceipt } from "@wagmi/core";
-import { ethers } from "ethers";
 
 const API = "https://www.dimex.tech";
     
@@ -1016,9 +1019,7 @@ function viewAddress(addr){
       
 /* ===== VIEW ADDRESS FUNCTION ===== */      
       
-function viewAddress(addr){      
-window.open("https://bscscan.com/address/" + addr, "_blank");      
-}      
+      
       
     const ABI = [
 
@@ -1068,17 +1069,12 @@ window.open("https://bscscan.com/address/" + addr, "_blank");
 // ==============================
 // 🔹 REOWN APPKIT INITIALIZATION (PROJECT ID ADDED DIRECTLY)
 // ==============================
-const appKit = createAppKit({
-  adapters: [wagmiAdapter],
-  projectId: "1885ad435015158bf203263156175c91",
-  networks: wagmiAdapter.networks,
-  defaultNetwork: wagmiAdapter.networks[0],
-});
+
 
 // ==============================
 // 🔹 GLOBAL VARIABLES
 // ==============================
-let userAddress, signer, contract;
+let userAddress, signer, contract, provider;
 
 // ==============================
 // 🔹 TX WRAPPER (APPKIT / WAGMI COMPLIANT)
@@ -1126,24 +1122,52 @@ window.addEventListener("load", async () => {
         }
     }
 
-    // Auto check if already connected via AppKit
+    // Restore saved wallet session
     try {
-        const account = getAccount(wagmiAdapter.wagmiConfig);
-        if (account && account.isConnected) {
-            await connectWallet();
-        }
+        
     } catch(e) {
-        console.log("Auto connect check error:", e);
+        console.log("Auto restore error:", e);
     }
 });
 
 
-let userAddress, signer, contract, provider;
+
 let isConnecting = false;
+let walletConnectPending = false;
+let walletAccountSyncRunning = false;
+
+
+
 
 // ==============================
 // CONNECT WALLET - REOWN APPKIT
 // ==============================
+async function handleWalletButton() {
+    try {
+        walletConnectPending = true;
+        const account = getAccount(wagmiAdapter.wagmiConfig);
+
+        if (account && account.isConnected && account.address) {
+            const dashboardReady =
+                provider && signer && contract && userAddress &&
+                userAddress.toLowerCase() === account.address.toLowerCase();
+
+            if (!dashboardReady) {
+                await connectWallet();
+                return;
+            }
+
+            walletConnectPending = false;
+            await appKit.open({ view: "Account" });
+        } else {
+            await connectWallet();
+        }
+    } catch (e) {
+        walletConnectPending = false;
+        console.error("Wallet button error:", e);
+    }
+}
+
 async function connectWallet() {
     if (isConnecting) return;
     isConnecting = true;
@@ -1212,6 +1236,7 @@ async function connectWallet() {
             throw new Error("Wallet disconnected. Please reconnect.");
         }
 
+        if (!account || !account.isConnected || typeof account.address !== "string" || !account.address) throw new Error("Wallet is not ready. Please reconnect.");
         userAddress = account.address;
         signer = provider.getSigner();
         contract = new ethers.Contract(
@@ -1220,16 +1245,8 @@ async function connectWallet() {
             signer
         );
 
-        // Get BNB balance
-        const balanceData = await getBalance(
-            wagmiAdapter.wagmiConfig,
-            {
-                address: userAddress,
-                chainId: 56
-            }
-        );
-
-        const balance = balanceData?.formatted ?? "0";
+        // Show wallet immediately; fetch BNB balance in background
+        const balance = "0";
 
         // Update existing HTML button
         const btn = document.getElementById("walletBtn");
@@ -1252,6 +1269,21 @@ async function connectWallet() {
             );
         }
 
+        // Update BNB balance after wallet button is ready
+        getBalance(wagmiAdapter.wagmiConfig, {
+            address: userAddress,
+            chainId: 56
+        }).then(balanceData => {
+            const currentBtn = document.getElementById("walletBtn");
+            if (currentBtn && userAddress) {
+                const balance = balanceData?.formatted ?? "0";
+                currentBtn.innerText =
+                    userAddress.slice(0, 6) + "..." +
+                    userAddress.slice(-4) + " | " +
+                    Number(balance).toFixed(3) + " BNB";
+            }
+        }).catch(e => console.log("BNB balance:", e));
+
         // Referral display
         const refBox = document.getElementById("refBox");
         if (refBox) {
@@ -1267,15 +1299,16 @@ async function connectWallet() {
                 "?ref=" + userAddress;
         }
 
-        // Refresh existing dashboard
+        // Refresh dashboard in background without delaying wallet button
         if (typeof refreshData === "function") {
-            await refreshData();
+            refreshData().catch(e => console.log("Dashboard refresh:", e));
         }
 
         if (typeof showTab === "function") {
             showTab("stakes");
         }
 
+        hideWalletSyncNotice();
         console.log("Wallet connected:", userAddress);
         console.log("Connected chain:", network.chainId);
         console.log("Staking contract:", STAKE_ADDR);
@@ -1283,11 +1316,7 @@ async function connectWallet() {
     } catch (e) {
         console.error("Wallet connection error:", e);
 
-        alert(
-            e?.shortMessage ||
-            e?.message ||
-            "Wallet connection failed."
-        );
+        
 
     } finally {
         isConnecting = false;
@@ -1295,13 +1324,106 @@ async function connectWallet() {
 }
 
 // ==============================
-// 🔹 DASHBOARD AUTO REFRESH
-// ==============================
+
+function showWalletSyncNotice() { let n = document.getElementById("walletSyncNotice"); if (!n) { n = document.createElement("div"); n.id = "walletSyncNotice"; n.style.cssText = "position:fixed;top:72px;left:5%;width:90%;box-sizing:border-box;z-index:99999;background:#92400e;color:#fff;padding:10px 12px;border-radius:10px;font-size:13px;text-align:center;box-shadow:0 4px 14px #0008"; document.body.appendChild(n); } n.textContent = "Wallet connection needs refresh. Disconnect and reconnect your wallet."; }
+function hideWalletSyncNotice() { document.getElementById("walletSyncNotice")?.remove(); }
+
+function resetWalletUI() {
+    userAddress = null;
+    signer = null;
+    contract = null;
+    provider = null;
+
+    const btn = document.getElementById("walletBtn");
+    if (btn) {
+        btn.innerText = "🔗 Wallet Connect";
+        btn.classList.remove("bg-emerald-600", "text-white", "walletConnected");
+        btn.classList.add("bg-amber-500", "text-black");
+    }
+}
+
+
+// Keep the wallet session; never disconnect during external wallet switching.
+async function syncWalletAfterReturn() {
+    if (walletAccountSyncRunning) return;
+    walletAccountSyncRunning = true;
+
+    try {
+        for (let attempt = 0; attempt < 12; attempt++) {
+            const account = getAccount(wagmiAdapter.wagmiConfig);
+
+            if (account && account.isConnected && account.address) {
+                if (isConnecting) {
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    continue;
+                }
+
+                // Rebuild the ethers session from the current wallet provider.
+                provider = null;
+                signer = null;
+                contract = null;
+                walletConnectPending = true;
+
+                await connectWallet();
+
+                if (provider && signer && contract && userAddress &&
+                    userAddress.toLowerCase() === account.address.toLowerCase()) {
+                    walletConnectPending = false;
+                    return;
+                }
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+    } catch (e) {
+        console.log("Wallet return sync:", e);
+    } finally {
+        walletConnectPending = false;
+        walletAccountSyncRunning = false;
+    }
+}
+
+if (typeof appKit.subscribeAccount === "function") {
+    appKit.subscribeAccount((account) => {
+        if (account && account.isConnected && account.address) {
+            syncWalletAfterReturn();
+            return;
+        }
+
+        const btn = document.getElementById("walletBtn");
+        if (btn) {
+            btn.innerText = "🔗 Wallet Connect";
+            btn.classList.remove("bg-emerald-600", "text-white", "walletConnected");
+            btn.classList.add("bg-amber-500", "text-black");
+        }
+    });
+}
+
+// Restore existing Wagmi wallet session without disconnecting.
+async function restoreWalletSession() {
+    try {
+        await reconnect(wagmiAdapter.wagmiConfig);
+    } catch (e) {
+        console.log("Wagmi session restore:", e);
+    }
+    await syncWalletAfterReturn();
+}
+
+window.addEventListener("focus", () => {
+    setTimeout(restoreWalletSession, 500);
+});
+
+window.addEventListener("pageshow", () => {
+    setTimeout(restoreWalletSession, 500);
+});
+
+setTimeout(restoreWalletSession, 800);
+
 setInterval(async()=>{
     try{
         const account = getAccount(wagmiAdapter.wagmiConfig);
-        if(!account || !account.isConnected) return;
-        if(typeof refreshData === "function") await refreshData();
+        if (!account || !account.isConnected) return;
+        if (typeof refreshData === "function") await refreshData();
         if(typeof updatePrice === "function") await updatePrice();
     }catch(e){
         console.log("Dashboard sync error");
@@ -2937,33 +3059,149 @@ async function withdrawStake(index, btn) {
     }
 }
 
-async function buyDMX() {
+         
+
+
+async function sellDMX() {
     if (window.txPending) return;
 
+    const ready = await ensureClaimWallet();
+    if (!ready) return;
+
     if (!contract || !signer || !userAddress || !provider) {
-        alert("Wallet not connected");
+        alert("Wallet connection not ready. Please reconnect.");
         return;
     }
 
-    const inputEl = document.getElementById("buyUSDT");
-    if (!inputEl) return;
+    const inputEl = document.getElementById("sellDMXAmount");
+    const previewEl = document.getElementById("sellPreviewUSDT");
+    const btn = document.querySelector('button[onclick="sellDMX()"]');
+
+    if (!inputEl) {
+        alert("Sell amount field not found");
+        return;
+    }
 
     const amtInput = inputEl.value.trim();
-
-    if (!amtInput || !/^\d+(\.\d+)?$/.test(amtInput) || Number(amtInput) <= 0) {
-        alert("Enter valid USDT amount");
+    if (!amtInput || !/^\d+(\.\d+)?$/.test(amtInput) ||
+        !Number.isFinite(Number(amtInput)) || Number(amtInput) <= 0) {
+        alert("Enter a valid DMX amount");
         return;
     }
 
     window.txPending = true;
 
     try {
-        const balance = await provider.getBalance(userAddress);
-
-        if (balance.eq(0)) {
+        const nativeBalance = await provider.getBalance(userAddress);
+        if (nativeBalance.eq(0)) {
             alert("BNB required for gas fees");
-            speak("Please add B N B for gas");
             return;
+        }
+
+        const amountWei = ethers.utils.parseEther(amtInput);
+        const dmx = new ethers.Contract(DMX_ADDR, TOKEN_ABI, signer);
+        const dmxBalance = await dmx.balanceOf(userAddress);
+
+        if (dmxBalance.lt(amountWei)) {
+            alert("Not enough DMX balance");
+            return;
+        }
+
+        if (previewEl) {
+            try {
+                const quote = await contract.getUSDTFromDMX(amountWei);
+                previewEl.innerText =
+                    "Estimated USDT: " +
+                    Number(ethers.utils.formatEther(quote)).toFixed(4);
+            } catch (_) {
+                previewEl.innerText = "USDT estimate unavailable";
+            }
+        }
+
+        const allowance = await dmx.allowance(userAddress, STAKE_ADDR);
+        if (allowance.lt(amountWei)) {
+            alert("Approving DMX. Please confirm in your wallet.");
+            const approveTx = await dmx.approve(
+                STAKE_ADDR,
+                ethers.constants.MaxUint256
+            );
+            await approveTx.wait();
+        }
+
+        if (btn) {
+            btn.disabled = true;
+            btn.innerText = "Processing...";
+        }
+
+
+        const tx = await contract.connect(signer).sellDMX(amountWei);
+        await tx.wait();
+
+        inputEl.value = "";
+        if (previewEl) previewEl.innerText = "";
+
+        if (typeof showToast === "function") {
+            showToast("Sell transaction successful", "#16a34a");
+        } else {
+            alert("Sell transaction successful");
+        }
+
+        if (typeof refreshData === "function") await refreshData();
+
+    } catch (err) {
+        console.error("Sell DMX error:", err);
+        alert(
+            "Sell failed: " +
+            (err.reason || err.shortMessage || err.message || "Unknown error")
+        );
+    } finally {
+        window.txPending = false;
+        if (btn) {
+            btn.disabled = false;
+            btn.innerText = "SELL DMX";
+        }
+    }
+}
+
+async function buyDMX() {
+    if (window.txPending) return;
+
+    const ready = await ensureClaimWallet();
+    if (!ready) return;
+
+    if (!contract || !signer || !userAddress || !provider) {
+        alert("Wallet connection not ready. Please reconnect.");
+        return;
+    }
+
+    const inputEl = document.getElementById("buyUSDT");
+    const btn = document.querySelector('button[onclick="buyDMX()"]');
+
+    if (!inputEl) {
+        alert("Buy amount field not found");
+        return;
+    }
+
+    const amtInput = inputEl.value.trim();
+
+    if (!amtInput || !/^\d+(\.\d+)?$/.test(amtInput) ||
+        !Number.isFinite(Number(amtInput)) || Number(amtInput) <= 0) {
+        alert("Enter valid USDT amount");
+        return;
+    }
+
+    window.txPending = true;
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerText = "Processing...";
+    }
+
+    try {
+        const nativeBalance = await provider.getBalance(userAddress);
+
+        if (nativeBalance.eq(0)) {
+            throw new Error("BNB required for gas fees");
         }
 
         const usdtAddr = await contract.usdt();
@@ -2979,56 +3217,51 @@ async function buyDMX() {
         );
 
         const amountWei = ethers.utils.parseUnits(amtInput, 18);
-
         const usdtBal = await usdt.balanceOf(userAddress);
 
         if (usdtBal.lt(amountWei)) {
-            alert("Not enough USDT balance");
-            speak("Not enough U S D T balance");
-            return;
+            throw new Error("Not enough USDT balance");
         }
 
         const allowance = await usdt.allowance(userAddress, STAKE_ADDR);
 
         if (allowance.lt(amountWei)) {
-            alert("Approving USDT. Please confirm in your wallet.");
-
             const approveTx = await usdt.approve(
                 STAKE_ADDR,
                 ethers.constants.MaxUint256
             );
-
             await approveTx.wait();
         }
-
-        speak("Buy request sent. Please confirm in your wallet.");
 
         const tx = await contract.connect(signer).buyDMX(amountWei);
         await tx.wait();
 
         if (typeof launchFireworks === "function") launchFireworks();
+        if (typeof showToast === "function") {
+            showToast("Buy transaction successful", "#16a34a");
+        } else {
+            alert("DMX Purchased Successfully");
+        }
 
         speak("Purchase successful");
-        alert("DMX Purchased Successfully");
-
         inputEl.value = "";
 
         if (typeof refreshData === "function") await refreshData();
 
-    } catch (e) {
-        console.error("Buy DMX error:", e);
-
-        if (e.code === 4001 || e.code === "ACTION_REJECTED") {
-            alert("Transaction cancelled");
-        } else {
-            alert("Buy failed or transaction status is unconfirmed. Check your wallet or block explorer.");
-        }
+    } catch (err) {
+        console.error("Buy DMX error:", err);
+        alert("Buy failed: " +
+            (err.reason || err.shortMessage || err.message || "Unknown error"));
     } finally {
         window.txPending = false;
+        if (btn) {
+            btn.disabled = false;
+            btn.innerText = "BUY DMX";
+        }
     }
 }
-            
-          
+
+
 // ==============================
 // 🔹 ANNOUNCEMENT SYSTEM (FINAL CLEAN)
 // ==============================
@@ -3834,430 +4067,126 @@ ${pdfLink}`;
   }
 }
 
- async function addDMXTokenAuto() {
-
-const address = "0x0eb5dc6af3dbd9f6d10f50c363b61c8714f497e6";
-const symbol = "DMX";
-const decimals = 18;
-const image = "https://raw.githubusercontent.com/glomartcom-netizen/logo/main/dmxlogo.png";
-
-const ua = navigator.userAgent.toLowerCase();
-
-showToast("Opening wallet...", "#444");
-
-// =========================
-// 🔌 CONNECT WALLET
-// =========================
-if(window.ethereum){
-
-    try{
-
-        await window.ethereum.request({
-            method: 'eth_requestAccounts'
-        });
-
-    }catch(e){
-
-        alert("Wallet connection rejected");
-        return;
+ async function getDimexWalletProvider() {
+    const account = getAccount(wagmiAdapter.wagmiConfig);
+    if (!account?.isConnected || !account.address) {
+        throw new Error("Please connect your wallet first.");
     }
+    const connections = getConnections(wagmiAdapter.wagmiConfig);
+    const connection = connections.find(c =>
+        c.accounts.some(a => a.toLowerCase() === account.address.toLowerCase())
+    );
+    const provider = connection
+        ? await connection.connector.getProvider()
+        : window.ethereum;
+    if (!provider || typeof provider.request !== "function") {
+        throw new Error("Wallet provider is unavailable.");
+    }
+    return provider;
 }
 
-// =========================
-// 🔥 SWITCH TO BSC
-// =========================
-if(window.ethereum){
+async function addDimexNetwork(provider, chainId, chainConfig) {
+    let current = await provider.request({ method: "eth_chainId" });
+    if (String(current).toLowerCase() === chainId.toLowerCase()) return true;
 
-    try{
-
-        await window.ethereum.request({
-            method: 'wallet_switchEthereumChain',
-            params: [{ chainId: '0x38' }]
+    try {
+        await provider.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId }]
         });
+    } catch (e) {
+        const unsupported = e.code === 4902 ||
+            /missing or invalid request|not supported|method not found/i.test(e.message || "");
+        if (e.code === 4001) throw e;
+        if (!unsupported) console.warn("Network switch:", e);
 
-    }catch(switchError){
-
-        // 🔥 BSC NOT ADDED
-        if(switchError.code === 4902){
-
-            try{
-
-                await window.ethereum.request({
-                    method: 'wallet_addEthereumChain',
-                    params: [{
-                        chainId: '0x38',
-                        chainName: 'BNB Smart Chain',
-                        nativeCurrency: {
-                            name: 'BNB',
-                            symbol: 'BNB',
-                            decimals: 18
-                        },
-                        rpcUrls: [
-                            'https://bsc-dataseed.binance.org/'
-                        ],
-                        blockExplorerUrls: [
-                            'https://bscscan.com'
-                        ]
-                    }]
-                });
-
-            }catch(addError){
-
-                console.log(addError);
-            }
+        try {
+            await provider.request({
+                method: "wallet_addEthereumChain",
+                params: [chainConfig]
+            });
+        } catch (addError) {
+            console.warn("Network add:", addError);
         }
     }
+
+    current = await provider.request({ method: "eth_chainId" });
+    if (String(current).toLowerCase() !== chainId.toLowerCase()) {
+        return false;
+    }
+    return true;
 }
 
-// =========================
-// 🌐 UNIVERSAL ADD TOKEN
-// =========================
-if(window.ethereum){
+async function addDMXTokenAuto() {
+    const address = "0x0eb5dc6af3dbd9f6d10f50c363b61c8714f497e6";
+    try {
+        const provider = await getDimexWalletProvider();
+        const onBSC = await addDimexNetwork(provider, "0x38", {
+            chainId: "0x38",
+            chainName: "BNB Smart Chain",
+            nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
+            rpcUrls: ["https://bsc-dataseed.binance.org/"],
+            blockExplorerUrls: ["https://bscscan.com"]
+        });
 
-    try{
+        if (!onBSC) {
+            alert("BNB Smart Chain was not selected. Please select BNB Smart Chain in your wallet, then tap Add DMX again.");
+            return;
+        }
 
-        const wasAdded =
-        await window.ethereum.request({
-
-            method:'wallet_watchAsset',
-
-            params:{
-                type:'ERC20',
-                options:{
+        const added = await provider.request({
+            method: "wallet_watchAsset",
+            params: {
+                type: "ERC20",
+                options: {
                     address,
-                    symbol,
-                    decimals,
-                    image
+                    symbol: "DMX",
+                    decimals: 18,
+                    image: "https://raw.githubusercontent.com/glomartcom-netizen/logo/main/dmxlogo.png"
                 }
             }
-
         });
 
-        if(wasAdded){
-
-            showToast(
-                "✅ DMX Added to Wallet",
-                "#16a34a"
-            );
-
-        }
-
-        return;
-
-    }catch(e){
-
-        console.log(e);
-
+        if (added) showToast("DMX Added to Wallet", "#16a34a");
+        else showToast("Wallet did not confirm DMX addition", "#b45309");
+    } catch (e) {
+        console.error("DMX add error:", e);
+        alert(e.message || "This wallet does not support automatic DMX token addition.");
     }
-
 }
 
+async function addDMXCNativeCoin() {
+    try {
+        const provider = await getDimexWalletProvider();
+        const added = await addDimexNetwork(provider, "0x6bb", {
+            chainId: "0x6bb",
+            chainName: "DimeX Chain",
+            nativeCurrency: { name: "DimeX Coin", symbol: "DMXC", decimals: 18 },
+            rpcUrls: ["https://rpc.dimexchain.tech"],
+            blockExplorerUrls: ["https://www.dimexscan.tech"]
+        });
 
-// =========================
-// ❌ FINAL FALLBACK
-// =========================
-navigator.clipboard.writeText(address);
-
-alert(
-"📌 DMX Token Address Copied\n\n" +
-"Wallet auto-add not supported.\n\n" +
-"👉 Open Wallet\n" +
-"👉 Add Custom Token\n" +
-"👉 Paste DMX Address\n\n" +
-"Network : BNB Smart Chain\n" +
-"Symbol : DMX\n" +
-"Decimals : 18"
-);
-
+        if (added) {
+            showToast("DimeX Chain added/selected", "#16a34a");
+        } else {
+            alert("Your wallet could not select DimeX Chain automatically. Please select DimeX Chain in wallet network settings.");
+        }
+    } catch (e) {
+        console.error("DMXC add error:", e);
+        alert(e.message || "This wallet does not support automatic network addition.");
+    }
 }
 
 </script>
 
-
-<!-- ==============================
-🔗 OPEN INSIDE WALLET BROWSER
-============================== -->
-
-<div id="browserBox"
-style="
-display:none;
-position:fixed;
-top:0;
-left:0;
-width:100%;
-height:100%;
-background:rgba(0,0,0,.85);
-justify-content:center;
-align-items:center;
-z-index:999999;
-">
-
-<div style="
-width:90%;
-max-width:350px;
-background:#111827;
-padding:25px;
-border-radius:20px;
-border:1px solid gold;
-text-align:center;
-color:white;
-">
-
-<h3 style="color:gold;">
-🔗 Open this referral link Inside your Wallet Browser
-</h3>
-
-<p style="
-font-size:13px;
-line-height:1.8;
-color:#ccc;
-">
-
-🚀 Direct Open
-
-<br>
-
-Tap any wallet below to open directly.
-
-</p>
-
-<div style="
-display:flex;
-flex-wrap:wrap;
-justify-content:center;
-gap:10px;
-margin-bottom:20px;
-">
-
-<button onclick="openTrust()"
-style="
-background:#1e293b;
-color:white;
-border:none;
-padding:10px;
-border-radius:12px;
-font-size:12px;
-font-weight:bold;">
-🟡 Trust Wallet
-</button>
-
-<button onclick="openMetaMask()"
-style="
-background:#1e293b;
-color:white;
-border:none;
-padding:10px;
-border-radius:12px;
-font-size:12px;
-font-weight:bold;">
-🦊 MetaMask
-</button>
-
-<button onclick="openSafePal()"
-style="
-background:#1e293b;
-color:white;
-border:none;
-padding:10px;
-border-radius:12px;
-font-size:12px;
-font-weight:bold;">
-🟢 SafePal
-</button>
-
-<button onclick="openTokenPocket()"
-style="
-background:#1e293b;
-color:white;
-border:none;
-padding:10px;
-border-radius:12px;
-font-size:12px;
-font-weight:bold;">
-🟠 TokenPocket
-</button>
-
-</div>
-
-<p style="
-font-size:13px;
-line-height:1.8;
-color:#ccc;
-">
-
-🌐 Other Wallets
-
-<br>
-
-Copy the referral link and open it inside your wallet browser.
-
-</p>
-
-<button onclick="copyCurrentLink()"
-style="
-background:gold;
-color:black;
-border:none;
-padding:12px 20px;
-border-radius:12px;
-font-weight:bold;">
-
-📋 Copy Current Link
-
-</button>
-
-<br><br>
-
-<p style="
-font-size:13px;
-line-height:1.8;
-color:#ccc;
-">
-
-✅ Already inside your wallet browser?
-
-<br>
-
-Tap OK and connect your wallet.
-
-</p>
-
-<button onclick="
-document.getElementById('browserBox').style.display='none'
-"
-style="
-background:#2563eb;
-color:white;
-border:none;
-padding:10px 20px;
-border-radius:12px;
-">
-
-OK
-
-</button>
-</div>
-
-</div>
-
 <script>
+window.addEventListener("load", () => {
+    const ua = navigator.userAgent.toLowerCase();
 
-// ==============================
-// 🔗 COPY CURRENT LINK
-// ==============================
-function copyCurrentLink(){
-
-navigator.clipboard.writeText(window.location.href);
-
-alert(
-"Referral link copied.\n\n" +
-"Open your Wallet Browser and paste the link."
-);
-
-}
-
-// ==============================
-// 🔗 DIRECT WALLET OPEN
-// ==============================
-function openTrust(){
-
-window.location.href =
-"https://link.trustwallet.com/open_url?coin_id=20000714&url=" +
-encodeURIComponent(window.location.href);
-
-}
-
-function openMetaMask(){
-
-window.location.href =
-"https://metamask.app.link/dapp/" +
-window.location.host +
-window.location.pathname +
-window.location.search;
-
-}
-
-function openSafePal(){
-
-window.location.href =
-"https://link.safepal.io/open?url=" +
-encodeURIComponent(window.location.href);
-
-}
-
-function openTokenPocket(){
-
-window.location.href =
-"tpdapp://open?params=%7B%22url%22%3A%22" +
-encodeURIComponent(window.location.href) +
-"%22%7D";
-
-}
-
-// ==============================
-// 🔥 SHOW ONLY FOR REFERRAL LINK
-// ==============================
-window.addEventListener("load",()=>{
-
-const urlParams = new URLSearchParams(window.location.search);
-
-const ua = navigator.userAgent.toLowerCase();
-
-// Wallet Browser Detection
-const insideWallet =
-
-window.ethereum ||
-
-ua.includes("trustwallet") ||
-
-ua.includes("metamask") ||
-
-ua.includes("safepal") ||
-
-ua.includes("tokenpocket") ||
-
-ua.includes("bitkeep") ||
-
-ua.includes("bitget") ||
-
-ua.includes("okx");
-
-// Trust Wallet → Hide Home Button
-if(
-
-window.ethereum?.isTrust ||
-
-ua.includes("trustwallet")
-
-){
-
-const homeBtn = document.getElementById("homeBtn");
-
-if(homeBtn){
-
-homeBtn.style.display = "none";
-
-}
-
-}
-
-// Show Popup only outside Wallet Browser
-if(
-
-urlParams.get("ref") &&
-
-!insideWallet
-
-){
-
-setTimeout(()=>{
-
-document.getElementById("browserBox").style.display = "flex";
-
-},1000);
-
-}
-
+    if (window.ethereum?.isTrust || ua.includes("trustwallet")) {
+        const homeBtn = document.getElementById("homeBtn");
+        if (homeBtn) homeBtn.style.display = "none";
+    }
 });
 </script>
 
