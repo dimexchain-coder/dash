@@ -294,11 +294,6 @@ whitespace-nowrap transition">
     
   </button>
 
-  <button onclick="addDMXCNativeCoin()"
-    class="bg-blue-500 text-white px-4 py-1.5 rounded-lg font-semibold text-xs sm:text-sm shadow-md hover:scale-105 transition">
-    + Add DMXC
-    <span class="block text-[9px]">NATIVE COIN</span>
-  </button>
 </div>
 
 <!-- TOKEN ADDRESS -->
@@ -4031,7 +4026,7 @@ function launchFireworks(){
   const ref = userAddress || "";
 
   // 🔥 DIRECT DASHBOARD REFERRAL (FINAL FIX)
-  const referralLink = window.location.origin + "/Dash/?ref=" + ref;
+  const referralLink = window.location.origin + "/dash/?ref=" + ref;
 
   const pdfLink = "https://drive.google.com/file/d/1l8RHT-W-LoDQKTTZp2mzGj_Aq1OdizbU/view";
 
@@ -4119,8 +4114,69 @@ async function addDimexNetwork(provider, chainId, chainConfig) {
 
 async function addDMXTokenAuto() {
     const address = "0x0eb5dc6af3dbd9f6d10f50c363b61c8714f497e6";
+
+    async function manualGuide() {
+        let copied = false;
+        try {
+            await navigator.clipboard.writeText(address);
+            copied = true;
+        } catch (e) {
+            try {
+                const el = document.createElement("textarea");
+                el.value = address;
+                document.body.appendChild(el);
+                el.select();
+                copied = document.execCommand("copy");
+                el.remove();
+            } catch (_) {}
+        }
+
+
+        document.getElementById("dmxGuidePopup")?.remove();
+
+        const popup = document.createElement("div");
+        popup.id = "dmxGuidePopup";
+        popup.className = "fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center p-4";
+        popup.innerHTML = `
+          <div class="bg-[#0b1220] w-[88%] max-w-xs p-4 rounded-2xl border border-sky-400 shadow-xl" onclick="event.stopPropagation()">
+            <div class="text-center text-2xl mb-1">💎</div>
+            <h3 class="text-sky-300 text-base font-black text-center mb-3">ADD DMX TOKEN</h3>
+            <div class="text-white text-xs leading-relaxed space-y-2">
+              <p>① OPEN YOUR WALLET</p>
+              <p>② CHOOSE ANY ONE OPTION:</p>
+              <div class="bg-slate-800 rounded-lg p-2 text-sky-200">
+                • Manage Coins<br>
+                • Customize → Manage Crypto<br>
+                • Add Custom Token<br>
+                • Import Token
+              </div>
+              <p class="text-green-300 font-bold">③ PASTE ADDRESS & ENABLE DMX</p>
+              <p id="dmxCopyStatus" class="text-center text-green-300 font-semibold"></p>
+              <p id="dmxManualAddress" class="text-[10px] text-slate-300 break-all text-center"></p>
+            </div>
+            <button id="dmxGuideClose" class="w-full mt-3 py-2 rounded-lg bg-sky-500 text-white text-sm font-bold">CLOSE</button>
+          </div>`;
+
+        document.body.appendChild(popup);
+        popup.querySelector("#dmxCopyStatus").textContent =
+            copied ? "✅ Address copied! Just paste it." : "Copy the address below:";
+        popup.querySelector("#dmxManualAddress").textContent =
+            copied ? "" : address;
+
+        const closePopup = () => popup.remove();
+        popup.querySelector("#dmxGuideClose").addEventListener("click", closePopup);
+        popup.addEventListener("click", closePopup);
+
+    }
+
+    if (window.safepalProvider && typeof window.safepalProvider.request === "function") {
+        await manualGuide();
+        return;
+    }
+
     try {
         const provider = await getDimexWalletProvider();
+
         const onBSC = await addDimexNetwork(provider, "0x38", {
             chainId: "0x38",
             chainName: "BNB Smart Chain",
@@ -4130,77 +4186,45 @@ async function addDMXTokenAuto() {
         });
 
         if (!onBSC) {
-            alert("BNB Smart Chain was not selected. Please select BNB Smart Chain in your wallet, then tap Add DMX again.");
+            await manualGuide();
             return;
         }
 
-        const added = await provider.request({
-            method: "wallet_watchAsset",
-            params: {
-                type: "ERC20",
-                options: {
-                    address,
-                    symbol: "DMX",
-                    decimals: 18,
-                    image: "https://raw.githubusercontent.com/glomartcom-netizen/logo/main/dmxlogo.png"
-                }
+        const options = {
+            address,
+            symbol: "DMX",
+            decimals: 18,
+            image: "https://raw.githubusercontent.com/glomartcom-netizen/logo/main/dmxlogo.png"
+        };
+
+        let added = false;
+        try {
+            added = await provider.request({
+                method: "wallet_watchAsset",
+                params: { type: "ERC20", options }
+            });
+        } catch (e) {
+            if (e.code === 4001) return;
+            delete options.image;
+            try {
+                added = await provider.request({
+                    method: "wallet_watchAsset",
+                    params: { type: "ERC20", options }
+                });
+            } catch (_) {
+                added = false;
             }
-        });
-
-        if (added) showToast("DMX Added to Wallet", "#16a34a");
-        else showToast("Wallet did not confirm DMX addition", "#b45309");
-    } catch (e) {
-        console.error("DMX add error:", e);
-        alert(e.message || "This wallet does not support automatic DMX token addition.");
-    }
-}
-
-async function addDMXCNativeCoin() {
-    try {
-        const provider = await getDimexWalletProvider();
-        const added = await addDimexNetwork(provider, "0x6bb", {
-            chainId: "0x6bb",
-            chainName: "DimeX Chain",
-            nativeCurrency: { name: "DimeX Coin", symbol: "DMXC", decimals: 18 },
-            rpcUrls: ["https://rpc.dimexchain.tech"],
-            blockExplorerUrls: ["https://www.dimexscan.tech"]
-        });
+        }
 
         if (added) {
-            showToast("DimeX Chain added/selected", "#16a34a");
+            showToast("DMX Added to Wallet", "#16a34a");
         } else {
-            alert("Your wallet could not select DimeX Chain automatically. Please select DimeX Chain in wallet network settings.");
+            await manualGuide();
         }
     } catch (e) {
-        console.error("DMXC add error:", e);
-        alert(e.message || "This wallet does not support automatic network addition.");
+        if (e.code === 4001) return;
+        await manualGuide();
     }
 }
 
 </script>
-
-<script>
-window.addEventListener("load", () => {
-    const ua = navigator.userAgent.toLowerCase();
-
-    if (window.ethereum?.isTrust || ua.includes("trustwallet")) {
-        const homeBtn = document.getElementById("homeBtn");
-        if (homeBtn) homeBtn.style.display = "none";
-    }
-});
-</script>
-
-<!-- 🔥 FIREWORKS CANVAS (FINAL POSITION) -->
-<canvas id="fireworksCanvas"
-style="
-position:fixed;
-top:0;
-left:0;
-width:100%;
-height:100%;
-pointer-events:none;
-z-index:9999;">
-</canvas>
-
-</body>
-</html>
