@@ -2299,6 +2299,26 @@ window.handleStake = async function(type, event) {
             }
         }, 1000);
 
+        // Stake receipt wait: same transaction only
+        const waitForStakeReceipt = async (tx) => {
+            const receiptPromise = tx.wait();
+            let timeoutId = null;
+            try {
+                const receipt = await Promise.race([
+                    receiptPromise,
+                    new Promise(resolve => {
+                        timeoutId = setTimeout(() => resolve(null), 60000);
+                    })
+                ]);
+                if (receipt) return receipt;
+                showWaitingMessage("⏳ Transaction still processing. Check your wallet.");
+                if (btn) btn.innerText = "Transaction Pending...";
+                return await receiptPromise;
+            } finally {
+                if (timeoutId !== null) clearTimeout(timeoutId);
+            }
+        };
+
         // =========================
         // 🔷 DMX STAKE
         // =========================
@@ -2352,7 +2372,10 @@ window.handleStake = async function(type, event) {
                 "⏳ Stake transaction submitted.\nWaiting for blockchain confirmation..."
             );
 
-            await tx.wait();
+            const receipt = await waitForStakeReceipt(tx);
+            if (!receipt || receipt.status !== 1) {
+                throw new Error("STAKE_TX_FAILED");
+            }
         }
 
         // =========================
@@ -2410,7 +2433,10 @@ window.handleStake = async function(type, event) {
                 "⏳ Stake transaction submitted.\nWaiting for blockchain confirmation..."
             );
 
-            await tx.wait();
+            const receipt = await waitForStakeReceipt(tx);
+            if (!receipt || receipt.status !== 1) {
+                throw new Error("STAKE_TX_FAILED");
+            }
         } else {
             showToast("Invalid stake type", "red");
             return;
@@ -2445,7 +2471,7 @@ window.handleStake = async function(type, event) {
             if (typeof refreshData === "function") {
                 refreshData();
             }
-        }, 1500);
+        }, 4000);
 
     } catch (e) {
         console.error("Stake transaction error:", e);
@@ -3941,8 +3967,13 @@ function launchFireworks(){
     if(fireRunning) return; // 🔥 prevent duplicate
     fireRunning = true;
 
-    const canvas = document.getElementById("fireworksCanvas");
-    if(!canvas) return;
+    let canvas = document.getElementById("fireworksCanvas");
+    if(!canvas){
+        canvas = document.createElement("canvas");
+        canvas.id = "fireworksCanvas";
+        document.body.appendChild(canvas);
+    }
+    canvas.style.cssText = "position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:99998;";
 
     const ctx = canvas.getContext("2d");
 
