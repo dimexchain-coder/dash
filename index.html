@@ -2158,8 +2158,9 @@ async function openStakeBox() {
         "Duration: " + planText[selectedPlan];
 }
 
+
 // ==============================
-// 🚀 HANDLE STAKE
+// HANDLE STAKE - FINAL TIMERLESS VERSION
 // ==============================
 window.handleStake = async function(type, event) {
     if (window.txPending) return;
@@ -2169,18 +2170,10 @@ window.handleStake = async function(type, event) {
     const btn = event?.currentTarget;
     const msg = document.getElementById("stakeMessageBox");
 
-    let interval = null;
-    let seconds = 120;
     let operationSucceeded = false;
-
-    // Countdown shows waiting status only.
-    // It NEVER cancels an already-started wallet transaction.
-    const stopCountdown = () => {
-        if (interval !== null) {
-            clearInterval(interval);
-            interval = null;
-        }
-    };
+    let txSubmitted = false;
+    let activeTxHash = null;
+    let activeTxType = "";
 
     const showWaitingMessage = (text) => {
         if (!msg) return;
@@ -2188,16 +2181,21 @@ window.handleStake = async function(type, event) {
         msg.innerText = text;
     };
 
+    // Wait for the actual blockchain receipt.
+    // No countdown and no automatic transaction resubmission.
+    const waitForReceipt = async (tx, label) => {
+        return await tx.wait();
+    };
+
     try {
         // =========================
-        // 🔐 WALLET CHECK
+        // WALLET CHECK
         // =========================
         if (!contract || !signer || !userAddress || !provider) {
             showToast("Connect wallet first", "red");
             return;
         }
 
-        // Verify the connected signer matches the selected account.
         const signerAddress = await signer.getAddress();
 
         if (signerAddress.toLowerCase() !== userAddress.toLowerCase()) {
@@ -2206,7 +2204,7 @@ window.handleStake = async function(type, event) {
         }
 
         // =========================
-        // ⛽ BNB GAS CHECK
+        // BNB GAS CHECK
         // =========================
         const bnbBal = await provider.getBalance(userAddress);
 
@@ -2217,7 +2215,7 @@ window.handleStake = async function(type, event) {
         }
 
         // =========================
-        // 💰 AMOUNT CHECK
+        // AMOUNT CHECK
         // =========================
         const amountInput = document.getElementById("stakeAmount");
         const amountText = amountInput ? amountInput.value.trim() : "";
@@ -2234,25 +2232,29 @@ window.handleStake = async function(type, event) {
         const amountWei = ethers.utils.parseUnits(amountText, 18);
 
         // =========================
-        // 📅 PLAN DURATION
+        // PLAN DURATION
         // =========================
-        let duration = 0;
+        const durations = {
+            1: 7776000,
+            2: 15552000,
+            3: 31536000
+        };
 
-        if (selectedPlan === 1) duration = 7776000;
-        else if (selectedPlan === 2) duration = 15552000;
-        else if (selectedPlan === 3) duration = 31536000;
+        const duration = durations[selectedPlan];
 
-        if (duration === 0) {
+        if (!duration) {
             showToast("Select plan", "red");
             return;
         }
 
         // =========================
-        // 👥 REFERRAL
+        // REFERRAL CHECK
         // =========================
-        const DEFAULT_REF = "0x53ba2d865be750d0e2d4d01bcb0a46ec1684c46b";
+        const DEFAULT_REF =
+            "0x53ba2d865be750d0e2d4d01bcb0a46ec1684c46b";
 
-        const refInput = document.getElementById("refAddress")?.value?.trim();
+        const refInput =
+            document.getElementById("refAddress")?.value?.trim();
 
         const ref = (
             refInput && ethers.utils.isAddress(refInput)
@@ -2266,189 +2268,144 @@ window.handleStake = async function(type, event) {
         }
 
         // =========================
-        // ⏱️ 120-SECOND STATUS TIMER
+        // TOKEN SETUP
         // =========================
-        seconds = 120;
+        let token;
+        let requiredAmount;
 
-        showWaitingMessage(
-            "⏳ Waiting for wallet confirmation...\n" +
-            "Check your wallet app.\n" +
-            "Time remaining: 120s"
-        );
-
-        interval = setInterval(() => {
-            seconds--;
-
-            if (seconds > 0) {
-                showWaitingMessage(
-                    "⏳ Waiting for wallet confirmation...\n" +
-                    "Check your wallet app.\n" +
-                    "Time remaining: " + seconds + "s"
-                );
-            } else {
-                stopCountdown();
-
-                // IMPORTANT:
-                // This is NOT a cancellation.
-                // The wallet prompt or blockchain transaction may still be pending.
-                showWaitingMessage(
-                    "⌛ Still waiting for confirmation.\n" +
-                    "Please check your wallet.\n" +
-                    "This timer does not cancel the transaction."
-                );
-            }
-        }, 1000);
-
-        // Stake receipt wait: same transaction only
-        const waitForStakeReceipt = async (tx) => {
-            const receiptPromise = tx.wait();
-            let timeoutId = null;
-            try {
-                const receipt = await Promise.race([
-                    receiptPromise,
-                    new Promise(resolve => {
-                        timeoutId = setTimeout(() => resolve(null), 60000);
-                    })
-                ]);
-                if (receipt) return receipt;
-                showWaitingMessage("⏳ Transaction still processing. Check your wallet.");
-                if (btn) btn.innerText = "Transaction Pending...";
-                return await receiptPromise;
-            } finally {
-                if (timeoutId !== null) clearTimeout(timeoutId);
-            }
-        };
-
-        // =========================
-        // 🔷 DMX STAKE
-        // =========================
         if (type === "DMX") {
-            const token = new ethers.Contract(
+            token = new ethers.Contract(
                 DMX_ADDR,
                 TOKEN_ABI,
                 signer
             );
 
-            const tokenBal = await token.balanceOf(userAddress);
+            requiredAmount = amountWei;
 
-            if (tokenBal.lt(amountWei)) {
-                showToast("Not enough DMX", "red");
-                return;
-            }
-
-            const allowance = await token.allowance(
-                userAddress,
-                STAKE_ADDR
-            );
-
-            if (allowance.lt(amountWei)) {
-                showWaitingMessage(
-                    "⏳ Waiting for DMX approval...\nCheck your wallet."
-                );
-
-                const approveTx = await token.approve(
-                    STAKE_ADDR,
-                    ethers.constants.MaxUint256
-                );
-
-                showWaitingMessage(
-                    "⏳ DMX approval submitted.\nWaiting for blockchain confirmation..."
-                );
-
-                await approveTx.wait();
-            }
-
-            showWaitingMessage(
-                "⏳ Waiting for Stake confirmation...\nCheck your wallet."
-            );
-
-            const tx = await contractWithSigner.stakeDMX(
-                amountWei,
-                duration,
-                ref
-            );
-
-            showWaitingMessage(
-                "⏳ Stake transaction submitted.\nWaiting for blockchain confirmation..."
-            );
-
-            const receipt = await waitForStakeReceipt(tx);
-            if (!receipt || receipt.status !== 1) {
-                throw new Error("STAKE_TX_FAILED");
-            }
-        }
-
-        // =========================
-        // 🔷 USDT STAKE
-        // =========================
-        else if (type === "USDT") {
-            const usdt = new ethers.Contract(
+        } else if (type === "USDT") {
+            token = new ethers.Contract(
                 USDT_ADDR,
                 TOKEN_ABI,
                 signer
             );
 
-            const requiredUSDT = await contract.getUSDTFromDMX(amountWei);
+            requiredAmount = await contract.getUSDTFromDMX(amountWei);
 
-            const usdtBal = await usdt.balanceOf(userAddress);
-
-            if (usdtBal.lt(requiredUSDT)) {
-                showToast("Not enough USDT", "red");
-                return;
-            }
-
-            const allowance = await usdt.allowance(
-                userAddress,
-                STAKE_ADDR
-            );
-
-            if (allowance.lt(requiredUSDT)) {
-                showWaitingMessage(
-                    "⏳ Waiting for USDT approval...\nCheck your wallet."
-                );
-
-                const approveTx = await usdt.approve(
-                    STAKE_ADDR,
-                    ethers.constants.MaxUint256
-                );
-
-                showWaitingMessage(
-                    "⏳ USDT approval submitted.\nWaiting for blockchain confirmation..."
-                );
-
-                await approveTx.wait();
-            }
-
-            showWaitingMessage(
-                "⏳ Waiting for Stake confirmation...\nCheck your wallet."
-            );
-
-            const tx = await contractWithSigner.stakeUSDT(
-                amountWei,
-                duration,
-                ref
-            );
-
-            showWaitingMessage(
-                "⏳ Stake transaction submitted.\nWaiting for blockchain confirmation..."
-            );
-
-            const receipt = await waitForStakeReceipt(tx);
-            if (!receipt || receipt.status !== 1) {
-                throw new Error("STAKE_TX_FAILED");
-            }
         } else {
             showToast("Invalid stake type", "red");
             return;
         }
 
         // =========================
-        // ✅ SUCCESS
+        // TOKEN BALANCE CHECK
+        // =========================
+        const tokenBal = await token.balanceOf(userAddress);
+
+        if (tokenBal.lt(requiredAmount)) {
+            showToast(
+                type === "DMX" ? "Not enough DMX" : "Not enough USDT",
+                "red"
+            );
+            return;
+        }
+
+        // =========================
+        // ALLOWANCE CHECK
+        // =========================
+        const allowance = await token.allowance(
+            userAddress,
+            STAKE_ADDR
+        );
+
+        if (allowance.lt(requiredAmount)) {
+
+            showWaitingMessage(
+                "⏳ Waiting for " + type +
+                " approval...\nCheck your wallet."
+            );
+
+            const approveTx = await token.approve(
+                STAKE_ADDR,
+                ethers.constants.MaxUint256
+            );
+
+            txSubmitted = true;
+            activeTxHash = approveTx.hash;
+            activeTxType = "Approval";
+
+            showWaitingMessage(
+                "⏳ " + type + " approval submitted.\n" +
+                "Transaction Hash: " + approveTx.hash +
+                "\nWaiting for confirmation..."
+            );
+
+            const approvalReceipt = await waitForReceipt(
+                approveTx,
+                "Approval"
+            );
+
+            if (!approvalReceipt || approvalReceipt.status !== 1) {
+                throw new Error("APPROVAL_TX_FAILED");
+            }
+
+            activeTxHash = null;
+            activeTxType = "";
+
+            showWaitingMessage(
+                "✅ Approval confirmed.\n" +
+                "Preparing Stake transaction..."
+            );
+        }
+
+        // =========================
+        // STAKE TRANSACTION
+        // =========================
+        showWaitingMessage(
+            "⏳ Waiting for Stake confirmation...\n" +
+            "Check your wallet."
+        );
+
+        let tx;
+
+        if (type === "DMX") {
+            tx = await contractWithSigner.stakeDMX(
+                amountWei,
+                duration,
+                ref
+            );
+        } else {
+            tx = await contractWithSigner.stakeUSDT(
+                amountWei,
+                duration,
+                ref
+            );
+        }
+
+        txSubmitted = true;
+        activeTxHash = tx.hash;
+        activeTxType = "Stake";
+
+        showWaitingMessage(
+            "⏳ Stake transaction submitted.\n" +
+            "Transaction Hash: " + tx.hash +
+            "\nWaiting for blockchain confirmation..."
+        );
+
+        const receipt = await waitForReceipt(tx, "Stake");
+
+        if (!receipt || receipt.status !== 1) {
+            throw new Error("STAKE_TX_FAILED");
+        }
+
+        // =========================
+        // SUCCESS
         // =========================
         operationSucceeded = true;
-        stopCountdown();
 
-        showWaitingMessage("✅ Stake successful!");
+        showWaitingMessage(
+            "✅ Stake successful!\n" +
+            "Transaction Hash: " + tx.hash
+        );
 
         if (typeof launchFireworks === "function") {
             launchFireworks();
@@ -2476,8 +2433,6 @@ window.handleStake = async function(type, event) {
     } catch (e) {
         console.error("Stake transaction error:", e);
 
-        stopCountdown();
-
         if (typeof hideWalletPanel === "function") {
             hideWalletPanel();
         }
@@ -2485,22 +2440,35 @@ window.handleStake = async function(type, event) {
         if (e?.code === 4001 || e?.code === "ACTION_REJECTED") {
             showToast("Transaction cancelled in wallet", "red");
             showWaitingMessage("❌ Wallet request rejected.");
+
         } else if (
             e?.code === "INSUFFICIENT_FUNDS" ||
             e?.code === -32000
         ) {
             showToast("Insufficient BNB for gas", "red");
-            showWaitingMessage("❌ Not enough BNB to complete the transaction.");
+            showWaitingMessage("❌ Not enough BNB for gas.");
+
+        } else if (e?.message === "APPROVAL_TX_FAILED") {
+            showToast("Token approval failed", "red");
+            showWaitingMessage("❌ Approval transaction failed.");
+
+        } else if (e?.message === "STAKE_TX_FAILED") {
+            showToast("Stake transaction failed", "red");
+            showWaitingMessage("❌ Stake transaction failed.");
+
         } else {
-            showToast("Transaction failed or confirmation error", "red");
+            showToast("Transaction error. Check wallet.", "red");
+
             showWaitingMessage(
-                "⚠️ Transaction status could not be confirmed. " +
-                "Check the transaction in your wallet or block explorer before retrying."
+                activeTxHash
+                    ? "⚠️ Transaction status needs verification.\n" +
+                      activeTxType + " Hash: " + activeTxHash +
+                      "\nCheck the block explorer before retrying."
+                    : (e?.message || "Stake failed.")
             );
         }
 
     } finally {
-        stopCountdown();
         window.txPending = false;
 
         if (btn) {
@@ -2512,6 +2480,7 @@ window.handleStake = async function(type, event) {
         }
     }
 };
+
 
 // ==============================
 // ❌ CLOSE STAKE MODAL
