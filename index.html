@@ -2,219 +2,409 @@
 <html lang="ta">      
 <head>      
 <meta charset="UTF-8">      
-<meta name="viewport" content="width=device-width, initial-scale=1.0">  <title>DimeX | Pro Ultimate Dashboard</title>  <script src="https://cdn.tailwindcss.com"></script>  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>  <style>      
-    body { font-family: 'Poppins', sans-serif; background: #010409; color: #f0f6fc; }      
-    .glass-card { background: rgba(13, 17, 23, 0.8); backdrop-filter: blur(10px); border: 1px solid rgba(240, 191, 76, 0.1); border-radius: 20px; }      
-    .walletConnected{    
-    
-box-shadow:0 0 10px rgba(16,185,129,0.5);    
-}    
-.gold-glow { text-shadow: 0 0 12px rgba(245, 158, 11, 0.6); }    
-.btn-action { background: linear-gradient(135deg, #fbbf24, #d97706); color: black; font-weight: 800; transition: 0.3s; }    
-.input-dark { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; color: white; outline: none; width: 100%; font-size: 13px; }    
-.tab-btn { flex: 1; padding: 12px; font-size: 11px; font-weight: 900; text-transform: uppercase; border-bottom: 2px solid transparent; opacity: 0.5; cursor: pointer; text-align: center; }    
-.tab-btn.active { border-bottom: 2px solid #f59e0b; opacity: 1; color: #f59e0b; }    
-    
-#announcementBanner{    
-    
-max-width:100%;    
-max-height:180px;    
-object-fit:cover;    
-}    
-    
-@keyframes claimGlow {    
-    
-0% { box-shadow: 0 0 0px rgba(251,191,36,0.6); }    
-50% { box-shadow: 0 0 20px rgba(251,191,36,0.9); }    
-100% { box-shadow: 0 0 0px rgba(251,191,36,0.6); }    
-}    
-    
-.claim-ready{    
-animation: claimGlow 1.5s infinite;    
-}   
-      
-/* PLAN BUTTON */  
-.plan-btn{  
-    transition: all 0.2s ease;  
-    border-radius: 12px;  
-}  
-  
-/* HOVER */  
-.plan-btn:hover{  
-    transform: scale(1.03);  
-}  
-  
-/* ACTIVE PLAN */  
-.plan-btn.active{  
-    background: linear-gradient(135deg,#f59e0b,#d97706);  
-    box-shadow: 0 0 8px rgba(251,191,36,0.4);  
-}  
-  
-/* TEXT */  
-.plan-btn div:first-child{  
-    color:#fbbf24;  
-    font-weight:700;  
-}  
-  
-.plan-btn div:last-child{  
-    color:#9ca3af;  
-}  
-  
-/* ACTIVE TEXT */  
-.plan-btn.active div{  
-    color:#000 !important;  
-}  
-  
-/* BUTTON HOVER CLEAN */  
-#btnStakeUSDT:hover{  
-    box-shadow: 0 0 8px rgba(16,185,129,0.4);  
-}  
-  
-#btnStakeDMX:hover{  
-    box-shadow: 0 0 8px rgba(249,115,22,0.4);  
-}  
-       
-/* ===== BRAND BUTTONS ===== */    
-    
-.btn-brand{    
-font-weight:800;    
-border-radius:14px;    
-transition:all 0.25s ease;    
-box-shadow:0 4px 12px rgba(0,0,0,0.3);    
-}    
-    
-.btn-brand:hover{    
-transform:translateY(-2px);    
-box-shadow:0 6px 20px rgba(0,0,0,0.45);    
-}    
-    
-/* USDT */    
-.btn-usdt{    
-background:linear-gradient(135deg,#16c784,#0ea76b);    
-color:white;    
-}    
-    
-/* DMX */    
-.btn-dmx{    
-background:linear-gradient(135deg,#fbbf24,#d97706);    
-color:black;    
-}    
-    
-/* CLAIM */    
-.btn-claim{    
-background:linear-gradient(135deg,#facc15,#f59e0b);    
-color:black;    
-}    
-    
-/* RESTAKE */    
-.btn-restake{    
-background:linear-gradient(135deg,#10b981,#059669);    
-color:white;    
-}   
-        
-/* Downline mobile fix */    
-#tabContent{    
-word-break: break-all;    
-overflow-wrap: anywhere;    
-}    
-    
-/* GLOBAL FIX */
-*{
-  box-sizing: border-box;
-}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">  <title>DimeX | Pro Ultimate Dashboard</title>  <script src="https://cdn.tailwindcss.com"></script>  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>  
 
-#txMessageBox{
-  position: static;   /* 🔥 FIX */
-  z-index: 1;
-}
+<style>
+    body { font-family: 'Poppins', sans-serif; background: #010409; color: #f0f6fc; }
+    .glass-card { background: rgba(13, 17, 23, 0.8); backdrop-filter: blur(10px); border: 1px solid rgba(240, 191, 76, 0.1); border-radius: 20px; }
 
-@keyframes blast {
-0% { transform: scale(1); }
-50% { transform: scale(1.2); box-shadow:0 0 20px gold; }
-100% { transform: scale(1); }
-}
+    .walletConnected{
+        box-shadow:0 0 10px rgba(16,185,129,0.5);
+    }
 
-.btn-blast{
-animation: blast 0.4s ease;
-}
-    
-.copyBtn{
-display:block;
-margin:15px auto;
-text-align:center;
-}    
+    .gold-glow { text-shadow: 0 0 12px rgba(245, 158, 11, 0.6); }
+    .btn-action { background: linear-gradient(135deg, #fbbf24, #d97706); color: black; font-weight: 800; transition: 0.3s; }
+    .input-dark { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; color: white; outline: none; width: 100%; font-size: 13px; }
+    .tab-btn { flex: 1; padding: 12px; font-size: 11px; font-weight: 900; text-transform: uppercase; border-bottom: 2px solid transparent; opacity: 0.5; cursor: pointer; text-align: center; }
+    .tab-btn.active { border-bottom: 2px solid #f59e0b; opacity: 1; color: #f59e0b; }
 
-@media (max-width:640px){
+    #announcementBanner{
+        max-width:100%;
+        max-height:180px;
+        object-fit:cover;
+    }
 
-  /* TEXT SIZE */
-  #myTotalStake,
-  #rewardPool{
-    font-size:16px;
-  }
+    @keyframes claimGlow {
+        0% { box-shadow: 0 0 0px rgba(251,191,36,0.6); }
+        50% { box-shadow: 0 0 20px rgba(251,191,36,0.9); }
+        100% { box-shadow: 0 0 0px rgba(251,191,36,0.6); }
+    }
 
-  #dailyReward,
-  #directIncome,
-  #levelIncome,
-  #totalEarned{
-    font-size:16px;
-  }
+    .claim-ready{
+        animation: claimGlow 1.5s infinite;
+    }
 
-  #directVolume,
-  #teamVolume{
-    font-size:15px;
-  }
+    /* PLAN BUTTON */
+    .plan-btn{
+        transition: all 0.2s ease;
+        border-radius: 12px;
+    }
 
-  /* CARD */
-  .glass-card p:first-child{
-    font-size:11px;
-    white-space:nowrap;
-  }
+    .plan-btn:hover{
+        transform: scale(1.03);
+    }
 
-  .glass-card{
-    padding:12px;
-  }
+    .plan-btn.active{
+        background: linear-gradient(135deg,#f59e0b,#d97706);
+        box-shadow: 0 0 8px rgba(251,191,36,0.4);
+    }
 
-  /* TAB */
-  #tabContent{
-    font-size:11px;
-  }
+    .plan-btn div:first-child{
+        color:#fbbf24;
+        font-weight:700;
+    }
 
-  .tab-btn{
-    font-size:9px;
-    padding:8px;
-  }
+    .plan-btn div:last-child{
+        color:#9ca3af;
+    }
 
-  /* 🔥 PHONE INPUT FIX */
-  #countrySelect{
-    width:35% !important;
-  }
+    .plan-btn.active div{
+        color:#000 !important;
+    }
 
-  #phoneNumber{
-    width:65% !important;
-  }
+    /* BUTTON HOVER CLEAN */
+    #btnStakeUSDT:hover{
+        box-shadow: 0 0 8px rgba(16,185,129,0.4);
+    }
 
-  #countrySelect,
-  #phoneNumber{
-    display:block;
-  }
+    #btnStakeDMX:hover{
+        box-shadow: 0 0 8px rgba(249,115,22,0.4);
+    }
 
-  /* 🔥 SIDE GAP FIX */
-  main{
-    padding-left:8px !important;
-    padding-right:8px !important;
-  }
+    /* ===== BRAND BUTTONS ===== */
+    .btn-brand{
+        font-weight:800;
+        border-radius:14px;
+        transition:all 0.25s ease;
+        box-shadow:0 4px 12px rgba(0,0,0,0.3);
+    }
 
-  /* 🔥 WALLET BUTTON FIX (CORRECT PLACE) */
-  #walletBtn{
-    max-width: 120px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    padding: 6px 10px !important;
-    font-size: 11px !important;
-  }
+    .btn-brand:hover{
+        transform:translateY(-2px);
+        box-shadow:0 6px 20px rgba(0,0,0,0.45);
+    }
 
-}
+    /* USDT */
+    .btn-usdt{
+        background:linear-gradient(135deg,#16c784,#0ea76b);
+        color:white;
+    }
+
+    /* DMX */
+    .btn-dmx{
+        background:linear-gradient(135deg,#fbbf24,#d97706);
+        color:black;
+    }
+
+    /* CLAIM */
+    .btn-claim{
+        background:linear-gradient(135deg,#facc15,#f59e0b);
+        color:black;
+    }
+
+    /* RESTAKE */
+    .btn-restake{
+        background:linear-gradient(135deg,#10b981,#059669);
+        color:white;
+    }
+
+    /* Downline mobile fix */
+    #tabContent{
+        word-break: break-all;
+        overflow-wrap: anywhere;
+    }
+
+    /* GLOBAL FIX */
+    *{
+        box-sizing: border-box;
+    }
+
+    #txMessageBox{
+        position: static;
+        z-index: 1;
+    }
+
+    @keyframes blast {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.2); box-shadow:0 0 20px gold; }
+        100% { transform: scale(1); }
+    }
+
+    .btn-blast{
+        animation: blast 0.4s ease;
+    }
+
+    .copyBtn{
+        display:block;
+        margin:15px auto;
+        text-align:center;
+    }
+
+    @media (max-width:640px){
+
+        /* TEXT SIZE */
+        #myTotalStake,
+        #rewardPool{
+            font-size:16px;
+        }
+
+        #dailyReward,
+        #directIncome,
+        #levelIncome,
+        #totalEarned{
+            font-size:16px;
+        }
+
+        #directVolume,
+        #teamVolume{
+            font-size:15px;
+        }
+
+        /* CARD */
+        .glass-card p:first-child{
+            font-size:11px;
+            white-space:nowrap;
+        }
+
+        .glass-card{
+            padding:12px;
+        }
+
+        /* TAB */
+        #tabContent{
+            font-size:11px;
+        }
+
+        .tab-btn{
+            font-size:9px;
+            padding:8px;
+        }
+
+        /* PHONE INPUT FIX */
+        #countrySelect{
+            width:35% !important;
+        }
+
+        #phoneNumber{
+            width:65% !important;
+        }
+
+        #countrySelect,
+        #phoneNumber{
+            display:block;
+        }
+
+        /* SIDE GAP FIX */
+        main{
+            padding-left:8px !important;
+            padding-right:8px !important;
+        }
+
+        /* WALLET BUTTON FIX */
+        #walletBtn{
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            padding: 6px 10px !important;
+            font-size: 11px !important;
+        }
+    }
+
+    /* ===================================
+       DIMEX NEW MAIN DASHBOARD DESIGN
+       =================================== */
+
+    /* LIVE STAKING MAIN CARD */
+    #liveStakingCard{
+        background:linear-gradient(145deg,rgba(20,25,35,.98),rgba(5,10,20,.98));
+        border:1px solid rgba(245,158,11,.75);
+        border-radius:22px;
+        box-shadow:
+            0 0 12px rgba(245,158,11,.25),
+            inset 0 0 20px rgba(245,158,11,.05);
+        padding:20px;
+    }
+
+    #liveStakingCard h3{
+        color:#fbbf24;
+        text-shadow:0 0 12px rgba(245,158,11,.5);
+    }
+
+    /* STAKING PLAN CARDS */
+    #liveStakingCard .plan-btn{
+        min-height:105px;
+        padding:15px 5px;
+        border:1px solid rgba(255,255,255,.18);
+        border-radius:15px;
+        background:linear-gradient(145deg,#18283d,#0c1424);
+        transition:all .25s ease;
+    }
+
+    #liveStakingCard .plan-btn:hover{
+        transform:translateY(-3px);
+        border-color:#fbbf24;
+        box-shadow:0 0 15px rgba(245,158,11,.3);
+    }
+
+    #liveStakingCard .plan-btn.active{
+        background:linear-gradient(135deg,#fbbf24,#d97706);
+        border:1px solid #fde68a;
+        box-shadow:0 0 18px rgba(251,191,36,.55);
+    }
+
+    #liveStakingCard .plan-btn div:first-child{
+        color:#fbbf24;
+        font-weight:800;
+    }
+
+    #liveStakingCard .plan-btn div:last-child{
+        color:#e5e7eb;
+        font-weight:700;
+    }
+
+    #liveStakingCard .plan-btn.active div{
+        color:#111827 !important;
+    }
+
+    /* STAKING AMOUNT INPUT */
+    #liveStakingCard #stakeAmount{
+        border:1px solid rgba(147,197,253,.65);
+        background:rgba(255,255,255,.06);
+        border-radius:13px;
+        min-height:48px;
+        box-shadow:inset 0 0 10px rgba(59,130,246,.08);
+    }
+
+    #liveStakingCard #stakeAmount:focus{
+        border-color:#fbbf24;
+        box-shadow:0 0 12px rgba(245,158,11,.25);
+    }
+
+    /* MAIN STAKE NOW BUTTON */
+    #liveStakingCard .btn-stake-main{
+        width:100%;
+        min-height:54px;
+        border-radius:16px;
+        background:linear-gradient(135deg,#fde047,#f59e0b,#d97706);
+        color:#111827;
+        font-weight:900;
+        font-size:16px;
+        border:1px solid #fde68a;
+        box-shadow:0 0 16px rgba(245,158,11,.35);
+        transition:all .25s ease;
+    }
+
+    #liveStakingCard .btn-stake-main:hover{
+        transform:translateY(-2px);
+        box-shadow:0 0 24px rgba(245,158,11,.6);
+    }
+
+    /* CLAIM CARD */
+    #claimCard{
+        border:1px solid rgba(250,204,21,.75);
+        border-radius:20px;
+        background:linear-gradient(145deg,rgba(35,22,8,.9),rgba(10,12,20,.98));
+        box-shadow:0 0 16px rgba(250,204,21,.18);
+        padding:18px;
+    }
+
+    #claimCard .btn-claim{
+        width:100%;
+        min-height:50px;
+        border-radius:16px;
+        background:linear-gradient(135deg,#fde047,#f59e0b,#d97706) !important;
+        color:#111827 !important;
+        border:1px solid #fde68a;
+        font-weight:900;
+        box-shadow:0 0 14px rgba(250,204,21,.3);
+        transition:all .25s ease;
+    }
+
+    #claimCard .btn-claim:hover{
+        transform:translateY(-2px);
+        box-shadow:0 0 22px rgba(250,204,21,.55);
+    }
+
+    /* RESTAKE CARD */
+    #restakeCard{
+        border:1px solid rgba(52,211,153,.8);
+        border-radius:20px;
+        background:linear-gradient(145deg,rgba(3,40,30,.9),rgba(5,15,20,.98));
+        box-shadow:0 0 16px rgba(16,185,129,.2);
+        padding:18px;
+    }
+
+    /* RESTAKE BONUS BADGE */
+    #restakeCard .restake-bonus{
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        padding:6px 12px;
+        border-radius:30px;
+        color:#d1fae5;
+        background:rgba(5,150,105,.2);
+        border:1px solid #34d399;
+        box-shadow:0 0 10px rgba(16,185,129,.3);
+        font-size:12px;
+        font-weight:900;
+    }
+
+    /* RESTAKE INFORMATION */
+    #restakeCard .restake-info{
+        border:1px solid rgba(52,211,153,.6);
+        border-radius:14px;
+        padding:14px;
+        background:rgba(6,78,59,.22);
+        color:#d1fae5;
+    }
+
+    /* RESTAKE BUTTON */
+    #restakeCard .btn-restake{
+        width:100%;
+        min-height:50px;
+        border-radius:16px;
+        background:linear-gradient(135deg,#4ade80,#10b981,#047857) !important;
+        color:white !important;
+        border:1px solid #86efac;
+        font-weight:900;
+        box-shadow:0 0 14px rgba(16,185,129,.3);
+        transition:all .25s ease;
+    }
+
+    #restakeCard .btn-restake:hover{
+        transform:translateY(-2px);
+        box-shadow:0 0 22px rgba(16,185,129,.55);
+    }
+
+    /* MOBILE DESIGN */
+    @media(max-width:640px){
+
+        #liveStakingCard,
+        #claimCard,
+        #restakeCard{
+            padding:13px;
+            border-radius:16px;
+        }
+
+        #liveStakingCard .plan-btn{
+            min-height:90px;
+            padding:10px 3px;
+            font-size:11px;
+        }
+
+        #liveStakingCard .btn-stake-main,
+        #claimCard .btn-claim,
+        #restakeCard .btn-restake{
+            min-height:48px;
+            font-size:14px;
+        }
+
+        #restakeCard .restake-info{
+            padding:10px;
+            font-size:12px;
+        }
+    }
 </style>
 </head>
 
@@ -477,65 +667,67 @@ Copy
 
 </div>
 
-
 <!-- ============================== -->
-<!-- 🔥 STAKING (FINAL CLEAN) -->
+<!-- DIMEX LIVE STAKING -->
 <!-- ============================== -->
-<div class="glass-card p-5 border border-amber-500/20">
 
-<h3 class="text-sm text-amber-400 font-black uppercase mb-4 flex items-center gap-2">
-<i class="fa-solid fa-layer-group"></i>
-Live Staking
-</h3>
+<div id="liveStakingCard" class="glass-card p-5">
 
-<input
-type="number"
-id="stakeAmount"
-placeholder="Enter Amount (Min 2500 DMX)"
-class="input-dark w-full text-center mb-3">
+  <h3 class="text-sm text-amber-400 font-black uppercase mb-4 flex items-center gap-2">
+    <i class="fa-solid fa-layer-group"></i>
+    Live Staking
+  </h3>
 
-<p id="usdtEstimate"
-class="text-xs text-green-400 text-center mb-3"></p>
+  <!-- STAKING PLANS -->
+  <div class="grid grid-cols-3 gap-2 mt-2">
 
-<p class="text-[11px] text-gray-400 text-center">
-USDT (<span class="text-emerald-400 font-bold">BEP20</span>)
-</p>
+    <button onclick="selectPlan(this,1)"
+      class="plan-btn p-3 rounded-xl text-center">
+      <div>90 Days</div>
+      <div>0.20% Daily</div>
+    </button>
 
-<!-- PLAN -->
-<div class="grid grid-cols-3 gap-2 mt-2">
+    <button onclick="selectPlan(this,2)"
+      class="plan-btn p-3 rounded-xl text-center">
+      <div>180 Days</div>
+      <div>0.25% Daily</div>
+    </button>
 
-<button onclick="selectPlan(this,1)"
-class="plan-btn p-3 rounded-xl bg-white/5 text-center">
-<div>90 Days</div>
-<div>0.20% Daily</div>
-</button>
+    <button onclick="selectPlan(this,3)"
+      class="plan-btn p-3 rounded-xl text-center">
+      <div>365 Days</div>
+      <div>0.30% Daily</div>
+    </button>
 
-<button onclick="selectPlan(this,2)"
-class="plan-btn p-3 rounded-xl bg-white/5 text-center">
-<div>180 Days</div>
-<div>0.25% Daily</div>
-</button>
+  </div>
 
-<button onclick="selectPlan(this,3)"
-class="plan-btn p-3 rounded-xl bg-white/5 text-center">
-<div>365 Days</div>
-<div>0.30% Daily</div>
-</button>
+  <!-- AMOUNT -->
+  <input
+    type="number"
+    id="stakeAmount"
+    placeholder="Enter Amount (Min 2500 DMX)"
+    class="input-dark w-full text-center mt-4 mb-3">
 
-</div>
+  <p id="usdtEstimate"
+     class="text-xs text-green-400 text-center mb-3"></p>
 
-<!-- Sponsor Display -->
-<div id="sponsorDisplay"
-class="mt-3 text-center text-xs text-cyan-300">
-</div>
+  <p class="text-[11px] text-gray-400 text-center">
+    USDT (<span class="text-emerald-400 font-bold">BEP20</span>)
+  </p>
 
-<button onclick="openStakeBox()"
-class="w-full mt-4 py-3 rounded-xl text-white font-bold
-bg-gradient-to-r from-pink-500 to-rose-500">
+  <!-- SPONSOR -->
+  <div id="sponsorDisplay"
+       class="mt-3 text-center text-xs text-cyan-300">
+  </div>
 
-🚀 Stake Now
+  <!-- SINGLE STAKE BUTTON -->
+  <button
+    onclick="openStakeBox()"
+    class="btn-stake-main w-full mt-4">
 
-</button>
+    🚀 STAKE NOW
+
+  </button>
 
 </div>
 
@@ -711,42 +903,49 @@ Close
 </div>
         
 
-<!-- CLAIM -->
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4">  
 
-  <div class="glass-card p-6 text-center border border-amber-500/20">  
+<!-- ============================== -->
+<!-- DIMEX CLAIM REWARD -->
+<!-- ============================== -->
 
-    <p class="text-sm text-gray-400 font-bold uppercase flex items-center justify-center gap-2 mb-1">  
-      <i class="fa-solid fa-hand-holding-dollar text-amber-400"></i>  
-      Available to Claim  
-    </p>  
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-    <p id="claimableAmt" class="text-2xl font-black gold-glow">  
-      0.00  
-    </p>  
+  <div id="claimCard" class="glass-card p-6 text-center">
 
-    <p id="claimableUSDT" class="text-sm text-green-400 mt-1 font-semibold tracking-wide">  
-      ≈ 0 USDT  
+    <h3 class="text-lg text-amber-400 font-black uppercase flex items-center justify-center gap-2 mb-4">
+      <i class="fa-solid fa-gift"></i>
+      Claim Reward
+    </h3>
+
+    <p class="text-sm text-gray-400 font-bold uppercase flex items-center justify-center gap-2 mb-1">
+      <i class="fa-solid fa-hand-holding-dollar text-amber-400"></i>
+      Available to Claim
     </p>
-      
+
+    <p id="claimableAmt" class="text-2xl font-black gold-glow">
+      0.00
+    </p>
+
+    <p id="claimableUSDT" class="text-sm text-green-400 mt-1 font-semibold tracking-wide">
+      ≈ 0 USDT
+    </p>
+
     <p id="claimModeTitle" class="text-xs font-bold mt-2 text-amber-400">--</p>
 
     <p id="claimNote" class="text-xs text-gray-400 mt-1">--</p>
 
-    <button id="claimBtn" onclick="openClaimBox()"  
-      class="w-full mt-4 py-4 rounded-xl text-sm uppercase font-black text-black  
-      bg-gradient-to-r from-yellow-400 to-amber-500  
-      shadow-lg hover:shadow-yellow-500/40  
-      transition transform hover:scale-[1.02]">
+    <button id="claimBtn" onclick="openClaimBox()"
+      class="btn-claim w-full mt-4 py-4 rounded-xl text-sm uppercase font-black">
+      <i class="fa-solid fa-gift mr-2"></i>
       Claim Now
     </button>
 
-    <button onclick="viewClaimHistory()"  
-      class="mt-3 text-xs text-amber-400 underline">  
-      View Claim History (BscScan)  
-    </button>  
+    <button onclick="viewClaimHistory()"
+      class="mt-3 text-xs text-amber-400 underline">
+      View Claim History (BscScan)
+    </button>
 
-  </div>  
+  </div>
 
 </div>
 
@@ -829,23 +1028,53 @@ Close
   </div>
 </div>
     
-</div> <div class="glass-card p-6 flex flex-col justify-center border border-emerald-500/10">  <p class="text-sm text-emerald-400 font-bold uppercase flex items-center gap-2">  <i class="fa-solid fa-rotate text-amber-400"></i>    
-Compounding    
-    
-</p>  <p class="text-sm text-gray-400 mb-4 italic">  Restake and get +5% bonus added to your stake (365 Days Plan).    
-    
-</p>  <button id="restakeBtn"  
-onclick="restake()"  
-class="w-full py-4 rounded-xl text-sm uppercase font-black text-white    
-bg-gradient-to-r from-purple-500 to-indigo-600    
-shadow-lg hover:shadow-purple-500/40    
-transition transform hover:scale-[1.02]">    
-  
-Restake + 5% Bonus    
-  
-</button>  
-</div>  
 </div> 
+<!-- ============================== -->
+<!-- DIMEX RESTAKE -->
+<!-- ============================== -->
+
+<div id="restakeCard" class="glass-card p-6 flex flex-col justify-center">
+
+  <div class="flex items-center justify-between gap-2 flex-wrap">
+
+    <p class="text-lg text-emerald-400 font-black uppercase flex items-center gap-2">
+      <i class="fa-solid fa-rotate text-emerald-400"></i>
+      RESTAKE
+    </p>
+
+    <span class="restake-bonus">
+      <i class="fa-solid fa-gift mr-1"></i>
+      +5% BONUS
+    </span>
+
+  </div>
+
+  <p class="text-sm text-gray-300 mt-2 mb-4">
+    Compound & Grow Your Earnings
+  </p>
+
+  <div class="restake-info flex items-center gap-3 mb-4">
+
+    <i class="fa-solid fa-circle-info text-xl text-cyan-400"></i>
+
+    <p class="text-sm font-semibold">
+      Your Claim Amount can be Restaked with 5% Bonus.
+    </p>
+
+  </div>
+
+  <button
+    id="restakeBtn"
+    onclick="restake()"
+    class="btn-restake w-full py-4 rounded-xl text-sm uppercase font-black">
+
+    <i class="fa-solid fa-rotate mr-2"></i>
+    RESTAKE NOW
+
+  </button>
+
+</div>
+
 
 <!-- PROGRESS -->    
     
